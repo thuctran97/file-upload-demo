@@ -54,7 +54,7 @@ public class FileUploadController {
                         inputFile = new File(objectKey);
                         FileOutputStream outputStream = new FileOutputStream(inputFile);
                         validateSHA256Hash(inputStream, outputStream, fileHash);
-                        fileService.uploadFile(inputStream, objectKey);
+                        fileService.uploadFile(inputFile, objectKey);
                     }
                 }
             }
@@ -72,7 +72,7 @@ public class FileUploadController {
         DigestInputStream digestInputStream = new DigestInputStream(inputStream, shaDigest);
         IOUtils.copy(digestInputStream, outputStream);
         digestInputStream.close();
-      //  inputStream.close();
+        inputStream.close();
         outputStream.close();
         if (!Hex.encodeHexString(shaDigest.digest()).equalsIgnoreCase(fileHash)) {
             throw new Exception("Hash error: mismatch");

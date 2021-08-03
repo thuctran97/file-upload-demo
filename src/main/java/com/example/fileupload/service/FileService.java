@@ -44,18 +44,14 @@ public class FileService {
         return request;
     }
 
-    public String uploadFile(InputStream inputStream, String objectKey) throws IOException {
+    public String uploadFile(File file, String objectKey) throws IOException {
         try{
-            System.out.println("Uploading file: ");
-            ObjectMetadata metadata = new ObjectMetadata();
-            metadata.setContentLength(61744291);
-//            System.out.println("Uploading file: " + file.getName());
-            PutObjectRequest request = new PutObjectRequest(existingBucketName, objectKey, inputStream, new ObjectMetadata());
+            System.out.println("Uploading file: " + file.getName());
+            PutObjectRequest request = initUploadObject(objectKey, file);
             Upload upload = transferManager.upload(request);
             upload.waitForCompletion();
             //transferManager.shutdownNow(true);
-            System.out.println("completed upload: ");
-            //System.out.println("completed upload: " + file.getName());
+            System.out.println("completed upload: " + file.getName());
         }
         catch (AmazonClientException | InterruptedException  amazonClientException) {
             System.out.println("Unable to upload file, upload aborted.");
@@ -64,10 +60,10 @@ public class FileService {
         }
         finally
         {
-//            try{
-//                if (file != null && file.delete())
-//                    System.out.println("deleted file: " + file.getName());
-//            }catch(Exception ex){}
+            try{
+                if (file != null && file.delete())
+                    System.out.println("deleted file: " + file.getName());
+            }catch(Exception ex){}
         }
         return "upload success";
     }
