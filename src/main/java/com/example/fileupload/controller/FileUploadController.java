@@ -87,7 +87,7 @@ public class FileUploadController {
     @RequestMapping(value = "/upload-multichunks", method = RequestMethod.POST, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public String handleUploadMultiChunks(HttpServletRequest request) {
         ServletFileUpload upload = new ServletFileUpload();
-        String fileHash = request.getHeader(FILE_HASH);
+        String fileHash = null;
         String objectKey = "file";
         File inputFile = null;
         int numberOfChunks = 0;
@@ -100,11 +100,16 @@ public class FileUploadController {
                     if (!item.isFormField()) {
                         chunkIndex++;
                         System.out.println("Received " + chunkIndex + " chunks");
-                        return  fileService.uploadFileViaStream(inputStream, objectKey, chunkIndex, numberOfChunks);
-                    } else
+                        return  fileService.uploadFileViaStream(inputStream, objectKey, chunkIndex, numberOfChunks, fileHash);
+                    } else {
                         if (item.getFieldName().equalsIgnoreCase("numberOfChunks")){
                             numberOfChunks = Integer.parseInt(IOUtils.toString(inputStream, StandardCharsets.UTF_8.name()));
                         }
+                        if (item.getFieldName().equalsIgnoreCase("fileHash")){
+                            fileHash = IOUtils.toString(inputStream, StandardCharsets.UTF_8.name());
+                        }
+                    }
+
                 }
             }
         } catch (Exception e) {

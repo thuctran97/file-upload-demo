@@ -17,14 +17,11 @@ import com.amazonaws.services.s3.transfer.Upload;
 import org.apache.commons.io.IOUtils;
 import org.springframework.stereotype.Service;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 @Service
 public class FileService {
@@ -35,8 +32,10 @@ public class FileService {
     public InitiateMultipartUploadRequest initRequest;
     public List<PartETag> partETags;
     public boolean isFirstPart;
+    public MessageDigest shaDigest;
+    public byte[] buf;
 
-    public FileService() {
+    public FileService() throws NoSuchAlgorithmException {
         s3Client = AmazonS3ClientBuilder.standard()
                 .withRegion(Regions.AP_SOUTHEAST_2)
                 .withCredentials(new ProfileCredentialsProvider())
@@ -45,6 +44,8 @@ public class FileService {
                 .withS3Client(s3Client)
                 .build();
         partETags = new ArrayList<PartETag>();
+        buf = new byte[8192];
+        shaDigest = MessageDigest.getInstance("SHA-256");
     }
 
     private PutObjectRequest initUploadObject(String objectKey, File file) {
@@ -78,7 +79,27 @@ public class FileService {
         return "upload success";
     }
 
-    public String uploadFileViaStream(InputStream inputStream, String objectKey, int chunkIndex, int numberOfChunks){
+    private void updateShaDigest(File file) throws IOException {
+        FileInputStream inputStream = new FileInputStream(file);
+        int n;
+        while ((n = inputStream.read(buf)) > 0)
+            shaDigest.update(buf, 0, n);
+    }
+
+    private void validateSha256Hash(String fileHash) throws Exception {
+        byte hashes[] = shaDigest.digest();
+        StringBuilder sb = new StringBuilder();
+        for (byte b : hashes) {
+            sb.append(String.format("%02X", b));
+        }
+        String caculatedHash = sb.toString();
+        System.out.println("Expected hash: " + fileHash +", actual hash: " + caculatedHash);
+        if (!caculatedHash.equalsIgnoreCase(fileHash)){
+            throw new Exception("Wrong hash");
+        }
+    }
+
+    public String uploadFileViaStream(InputStream inputStream, String objectKey, int chunkIndex, int numberOfChunks, String fileHash){
         File file = null;
         String fileName = objectKey + chunkIndex;
         long partSize = 5*1024*1024;
@@ -93,6 +114,7 @@ public class FileService {
                 initResponse = s3Client.initiateMultipartUpload(initRequest);
                 isFirstPart = false;
             }
+            updateShaDigest(file);
             System.out.println("Uploading part: " + chunkIndex + ", size: " + partSize);
             UploadPartRequest uploadRequest = new UploadPartRequest()
                     .withBucketName(existingBucketName)
@@ -105,8 +127,8 @@ public class FileService {
             UploadPartResult uploadResult = s3Client.uploadPart(uploadRequest);
             partETags.add(uploadResult.getPartETag());
             file.delete();
-            System.out.println("Completed upload part number" + chunkIndex);
             if (chunkIndex == numberOfChunks){
+                validateSha256Hash(fileHash);
                 CompleteMultipartUploadRequest compRequest = new CompleteMultipartUploadRequest(existingBucketName, objectKey,
                         initResponse.getUploadId(), partETags);
                 s3Client.completeMultipartUpload(compRequest);
