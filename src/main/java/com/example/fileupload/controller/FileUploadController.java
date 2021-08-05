@@ -15,6 +15,7 @@ import org.apache.commons.fileupload.servlet.ServletFileUpload;
 import org.apache.commons.io.IOUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
@@ -23,6 +24,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.security.DigestInputStream;
 import java.security.MessageDigest;
 import java.util.Date;
@@ -35,6 +37,8 @@ public class FileUploadController {
 
     @Autowired
     FileService fileService;
+
+    public int receiveChunks = 0;
 
     @RequestMapping(value = "/upload", method = RequestMethod.POST, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public String handleUpload(HttpServletRequest request) {
@@ -79,4 +83,42 @@ public class FileUploadController {
         }
     }
 
+    @CrossOrigin(origins = "*")
+    @RequestMapping(value = "/upload-multichunks", method = RequestMethod.POST, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public String handleUploadMultiChunks(HttpServletRequest request) {
+        ServletFileUpload upload = new ServletFileUpload();
+        String fileHash = request.getHeader(FILE_HASH);
+        String objectKey = "file";
+        File inputFile = null;
+        System.out.println("-----------Receive request---------");
+        try {
+            FileItemIterator iterStream =  upload.getItemIterator(request);
+            int numberOfChunks = 0;
+
+            while (iterStream.hasNext()) {
+                FileItemStream item = iterStream.next();
+                try (InputStream inputStream = item.openStream()) {
+                    if (!item.isFormField()) {
+                        if (receiveChunks == numberOfChunks - 1) {
+                            System.out.println("received full chunks");
+                            return fileService.uploadFileViaStream(inputStream, objectKey, true);
+                        } else {
+                            receiveChunks++;
+                            System.out.println("received " + receiveChunks + " chunks");
+                            return  fileService.uploadFileViaStream(inputStream, objectKey, false);
+                        }
+                    } else
+                        if (item.getFieldName().equalsIgnoreCase("numberOfChunks")){
+                            numberOfChunks = Integer.parseInt(IOUtils.toString(inputStream, StandardCharsets.UTF_8.name()));
+                        }
+                }
+            }
+        } catch (Exception e) {
+            if (inputFile != null && inputFile.delete())
+                System.out.println("deleted file: " + inputFile.getName());
+            return e.getMessage();
+        }
+
+        return "success";
+    }
 }
