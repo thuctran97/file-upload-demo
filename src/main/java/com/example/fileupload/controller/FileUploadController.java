@@ -38,7 +38,7 @@ public class FileUploadController {
     @Autowired
     FileService fileService;
 
-    public int receiveChunks = 0;
+    public int chunkIndex = 0;
 
     @RequestMapping(value = "/upload", method = RequestMethod.POST, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public String handleUpload(HttpServletRequest request) {
@@ -90,23 +90,17 @@ public class FileUploadController {
         String fileHash = request.getHeader(FILE_HASH);
         String objectKey = "file";
         File inputFile = null;
-        System.out.println("-----------Receive request---------");
+        int numberOfChunks = 0;
+        System.out.println("----------------Receive request------------");
         try {
             FileItemIterator iterStream =  upload.getItemIterator(request);
-            int numberOfChunks = 0;
-
             while (iterStream.hasNext()) {
                 FileItemStream item = iterStream.next();
                 try (InputStream inputStream = item.openStream()) {
                     if (!item.isFormField()) {
-                        if (receiveChunks == numberOfChunks - 1) {
-                            System.out.println("received full chunks");
-                            return fileService.uploadFileViaStream(inputStream, objectKey, true);
-                        } else {
-                            receiveChunks++;
-                            System.out.println("received " + receiveChunks + " chunks");
-                            return  fileService.uploadFileViaStream(inputStream, objectKey, false);
-                        }
+                        chunkIndex++;
+                        System.out.println("Received " + chunkIndex + " chunks");
+                        return  fileService.uploadFileViaStream(inputStream, objectKey, chunkIndex, numberOfChunks);
                     } else
                         if (item.getFieldName().equalsIgnoreCase("numberOfChunks")){
                             numberOfChunks = Integer.parseInt(IOUtils.toString(inputStream, StandardCharsets.UTF_8.name()));

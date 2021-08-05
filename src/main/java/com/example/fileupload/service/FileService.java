@@ -31,11 +31,8 @@ public class FileService {
     public static String existingBucketName = "absolute-test-bucket";
     public TransferManager transferManager;
     public AmazonS3 s3Client;
-    public Map uploadFileMap;
     public InitiateMultipartUploadResult initResponse;
     public InitiateMultipartUploadRequest initRequest;
-    public long s3offset;
-    public int fileIndex;
     public List<PartETag> partETags;
     public boolean isFirstPart;
 
@@ -47,10 +44,6 @@ public class FileService {
         transferManager = TransferManagerBuilder.standard()
                 .withS3Client(s3Client)
                 .build();
-        uploadFileMap = new HashMap();
-        s3offset = 0;
-        fileIndex = 1;
-        isFirstPart = true;
         partETags = new ArrayList<PartETag>();
     }
 
@@ -85,49 +78,43 @@ public class FileService {
         return "upload success";
     }
 
-    public String uploadFileViaStream(InputStream inputStream, String objectKey, Boolean isLastPart){
+    public String uploadFileViaStream(InputStream inputStream, String objectKey, int chunkIndex, int numberOfChunks){
         File file = null;
-        String fileName = objectKey + s3offset;
+        String fileName = objectKey + chunkIndex;
         long partSize = 5*1024*1024;
         try {
-            System.out.println("uploading file: "+ fileName);
             file = new File(fileName);
             FileOutputStream out = new FileOutputStream(file);
             IOUtils.copy(inputStream, out);
             partSize = Math.min(partSize, file.length());
-            if (isFirstPart){
-                isFirstPart = false;
-                System.out.println("init request");
-                //uploadFileMap.put(objectKey,true);
+            if (chunkIndex == 1){
+                System.out.println("Init upload request");
                 initRequest = new InitiateMultipartUploadRequest(existingBucketName, objectKey);
                 initResponse = s3Client.initiateMultipartUpload(initRequest);
+                isFirstPart = false;
             }
-            System.out.println("upload part: " + fileIndex + ", size: " + partSize + ", offset: " + s3offset);
+            System.out.println("Uploading part: " + chunkIndex + ", size: " + partSize);
             UploadPartRequest uploadRequest = new UploadPartRequest()
                     .withBucketName(existingBucketName)
                     .withKey(objectKey)
                     .withUploadId(initResponse.getUploadId())
-                    .withPartNumber(fileIndex++)
+                    .withPartNumber(chunkIndex)
                     .withFileOffset(0)
                     .withFile(file)
                     .withPartSize(partSize);
-            System.out.println("Part number: " + uploadRequest.getPartNumber());
-            s3offset += partSize;
             UploadPartResult uploadResult = s3Client.uploadPart(uploadRequest);
             partETags.add(uploadResult.getPartETag());
             file.delete();
-            System.out.println("complete upload a part of :" + fileName);
-            if (isLastPart){
+            System.out.println("Completed upload part number" + chunkIndex);
+            if (chunkIndex == numberOfChunks){
                 CompleteMultipartUploadRequest compRequest = new CompleteMultipartUploadRequest(existingBucketName, objectKey,
                         initResponse.getUploadId(), partETags);
                 s3Client.completeMultipartUpload(compRequest);
-                System.out.println("completed whole file");
-                //uploadFileMap.remove(objectKey);
+                System.out.println("Completed upload whole file");
             }
         } catch (Exception e){
             System.out.println("Unable to upload");
             e.printStackTrace();
-           // uploadFileMap.remove(objectKey);
             return "upload error" + e.getMessage();
         }
         return "success";
