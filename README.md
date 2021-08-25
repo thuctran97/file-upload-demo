@@ -1,2 +1,2 @@
 # file-streaming-uploader
-Demo for File Streaming uploader
+Toying with streaming upload in Java
