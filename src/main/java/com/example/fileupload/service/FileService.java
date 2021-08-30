@@ -5,7 +5,6 @@
  */
 package com.example.fileupload.service;
 
-import com.amazonaws.AmazonClientException;
 import com.amazonaws.auth.profile.ProfileCredentialsProvider;
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.s3.AmazonS3;
@@ -13,7 +12,6 @@ import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.*;
 import com.amazonaws.services.s3.transfer.TransferManager;
 import com.amazonaws.services.s3.transfer.TransferManagerBuilder;
-import com.amazonaws.services.s3.transfer.Upload;
 import org.apache.commons.io.IOUtils;
 import org.springframework.stereotype.Service;
 
@@ -46,37 +44,6 @@ public class FileService {
         partETags = new ArrayList<PartETag>();
         buf = new byte[8192];
         shaDigest = MessageDigest.getInstance("SHA-256");
-    }
-
-    private PutObjectRequest initUploadObject(String objectKey, File file) {
-        PutObjectRequest request = new PutObjectRequest(existingBucketName, objectKey, file);
-        request.setGeneralProgressListener(progressEvent -> System.out.println("Transferred bytes: " +
-                progressEvent.getBytesTransferred()));
-        return request;
-    }
-
-    public String uploadFile(File file, String objectKey) throws IOException {
-        try{
-            System.out.println("Uploading file: " + file.getName());
-            PutObjectRequest request = initUploadObject(objectKey, file);
-            Upload upload = transferManager.upload(request);
-            upload.waitForCompletion();
-            //transferManager.shutdownNow(true);
-            System.out.println("completed upload: " + file.getName());
-        }
-        catch (AmazonClientException | InterruptedException  amazonClientException) {
-            System.out.println("Unable to upload file, upload aborted.");
-            amazonClientException.printStackTrace();
-            return "upload error: " + amazonClientException.getMessage();
-        }
-        finally
-        {
-            try{
-                if (file != null && file.delete())
-                    System.out.println("deleted file: " + file.getName());
-            }catch(Exception ex){}
-        }
-        return "upload success";
     }
 
     private void updateShaDigest(File file) throws IOException {
