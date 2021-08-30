@@ -19,8 +19,12 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 import javax.servlet.http.HttpServletRequest;
 
@@ -32,6 +36,29 @@ public class FileUploadController {
     FileService fileService;
 
     public int chunkIndex = 0;
+
+    @CrossOrigin(origins = "*")
+    @RequestMapping(value = "/upload-demo", method = RequestMethod.POST, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public String demoUploadMultiChunks(HttpServletRequest request) {
+        try {
+            FileOutputStream fos = new FileOutputStream("temp/result",true);
+            for (int index = 0; index < 10; index++){
+                Path path = Path.of("temp/" + index);
+                System.out.println("Exists: "+Files.exists(path));
+                File file = new File(String.valueOf(path));
+                FileInputStream fis = new FileInputStream(file);
+                byte[] fileBytes = new byte[(int) file.length()];
+                fos.write(fileBytes);
+                fos.flush();
+                fis.close();
+            }
+            fos.close();
+        }catch (Exception exception){
+            exception.printStackTrace();
+        }
+        System.out.println("The end");
+        return "true";
+    }
 
     @CrossOrigin(origins = "*")
     @RequestMapping(value = "/upload-multichunks", method = RequestMethod.POST, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
