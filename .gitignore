@@ -5,3 +5,6 @@ mvnw.cmd
 HELP.md
 target
 temp/
+.classpath
+.project
+.settings/

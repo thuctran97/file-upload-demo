@@ -15,7 +15,9 @@ import com.amazonaws.services.s3.transfer.TransferManagerBuilder;
 import org.apache.commons.io.IOUtils;
 import org.springframework.stereotype.Service;
 
+import javax.xml.bind.DatatypeConverter;
 import java.io.*;
+import java.security.DigestInputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
@@ -63,6 +65,26 @@ public class FileService {
         System.out.println("Expected hash: " + fileHash +", actual hash: " + caculatedHash);
         if (!caculatedHash.equalsIgnoreCase(fileHash)){
             throw new Exception("Wrong hash");
+        }
+    }
+    private void validateFileHash(String currentFilePath, String expectedHash) {
+        int BUFFER_SIZE = 5*1024*1024;
+        try (FileInputStream fis = new FileInputStream(currentFilePath);
+             BufferedInputStream bis = new BufferedInputStream(fis)) {
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            DigestInputStream dis = new DigestInputStream(bis, md);
+            byte[] buffer = new byte[BUFFER_SIZE];
+            int sizeRead = -1;
+            while ((sizeRead = bis.read(buffer)) != -1) {
+                md.update(buffer, 0, sizeRead);
+            }
+            dis.close();
+            byte[] hash = md.digest();
+            String calculatedHash = DatatypeConverter.printHexBinary(hash);
+            if (!calculatedHash.equalsIgnoreCase(expectedHash)) {
+                final String errorMsg = String.format("Wrong hash. Expected hash: %s, Actual hash: %s", expectedHash, calculatedHash);
+            }
+        } catch (NoSuchAlgorithmException | IOException exception) {
         }
     }
 
