@@ -4,9 +4,8 @@ import lombok.Data;
 
 @Data
 public class FileMetadataDto {
-	private String id;
 	private String fileName;
-	private String accountUid;
+	private String accountId;
 	private String hash;
 	private Double size;
 }
