@@ -1,9 +1,4 @@
-/**
- * Copyright (c) 2021 Absolute Software Corporation. All rights reserved. Reproduction or
- * transmission in whole or in part, in any form or by any means, electronic, mechanical or
- * otherwise, is prohibited without the prior written consent of the copyright owner.
- */
-package com.example.fileupload.service;
+package com.file.upload.service;
 
 import com.amazonaws.auth.profile.ProfileCredentialsProvider;
 import com.amazonaws.regions.Regions;
@@ -15,7 +10,6 @@ import com.amazonaws.services.s3.transfer.TransferManagerBuilder;
 import org.apache.commons.io.IOUtils;
 import org.springframework.stereotype.Service;
 
-import javax.xml.bind.DatatypeConverter;
 import java.io.*;
 import java.security.DigestInputStream;
 import java.security.MessageDigest;
@@ -23,8 +17,10 @@ import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
 
+import jakarta.xml.bind.DatatypeConverter;
+
 @Service
-public class FileService {
+public class S3Service {
     public static String existingBucketName = "absolute-test-bucket";
     public TransferManager transferManager;
     public AmazonS3 s3Client;
@@ -35,7 +31,7 @@ public class FileService {
     public MessageDigest shaDigest;
     public byte[] buf;
 
-    public FileService() throws NoSuchAlgorithmException {
+    public S3Service() throws NoSuchAlgorithmException {
         s3Client = AmazonS3ClientBuilder.standard()
                 .withRegion(Regions.AP_SOUTHEAST_2)
                 .withCredentials(new ProfileCredentialsProvider())

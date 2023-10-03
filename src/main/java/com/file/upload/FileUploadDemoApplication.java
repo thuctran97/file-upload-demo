@@ -1,4 +1,4 @@
-package com.example.fileupload;
+package com.file.upload;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
