@@ -1,0 +1,19 @@
+aws:
+  credentials:
+    access-key:
+    secret-key:
+  region: ap-southeast-2
+
+spring:
+  servlet:
+    multipart:
+      enabled: false
+  datasource:
+    url: jdbc:mysql://localhost:3306/test_db?useSSL=false
+    username: root
+    password: root
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    properties:
+      hibernate:
+        ddl-auto: update
