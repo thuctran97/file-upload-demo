@@ -5,9 +5,6 @@ aws:
   region: ap-southeast-2
 
 spring:
-  servlet:
-    multipart:
-      enabled: false
   datasource:
     url: jdbc:mysql://localhost:3306/test_db?useSSL=false
     username: root
@@ -17,3 +14,9 @@ spring:
     properties:
       hibernate:
         ddl-auto: update
+  servlet:
+    multipart:
+      enabled: true
+      file-size-threshold: 1GB
+      max-file-size: 1GB
+      max-request-size: 1GB
