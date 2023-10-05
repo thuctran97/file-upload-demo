@@ -18,7 +18,8 @@ public class FileUploadController {
 	private final FileService fileService;
 
 	@PostMapping(path = "/upload")
-	public ResponseEntity<String> upload(@RequestParam("file") MultipartFile file, @RequestParam("fileMetadata") String fileMetadata) {
+	public ResponseEntity<String> upload(@RequestParam("file") MultipartFile file, @RequestParam("fileMetadata") String fileMetadata) throws
+		Exception {
 		return new ResponseEntity<>(fileService.handleUpload(file, fileMetadata), HttpStatus.OK);
 	}
 

@@ -3,11 +3,15 @@ package com.file.upload.service;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+
+import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.file.upload.domain.FileMetadata;
 import com.file.upload.dto.FileMetadataDto;
+import com.file.upload.repository.FileMetadataRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,15 +23,24 @@ public class FileService {
 
 	private final ObjectMapper objectMapper;
 
-	public String handleUpload(MultipartFile file, String fileMetadata) {
+	private final ModelMapper modelMapper;
+
+	private final FileMetadataRepository fileMetadataRepository;
+
+	public String handleUpload(MultipartFile file, String fileMetadata) throws Exception {
 		try {
-			FileMetadataDto dto = objectMapper.readValue(fileMetadata, FileMetadataDto.class);
-
+			FileMetadataDto dto  = objectMapper.readValue(fileMetadata, FileMetadataDto.class);
 			File fileObj = convertMultiPartFileToFile(file);
-
 			String fileName = System.currentTimeMillis() + "_" + file.getOriginalFilename();
+
+			FileMetadata metadata = modelMapper.map(dto, FileMetadata.class);
+
+			log.info("Metadata: {}", metadata);
+
+			fileMetadataRepository.save(metadata);
 		} catch (Exception e) {
-			log.error("Error while uploading file: ", e);
+			log.error("Exception: ", e);
+			throw new Exception("Failed to upload");
 		}
 		return "Upload successfully";
 	}
