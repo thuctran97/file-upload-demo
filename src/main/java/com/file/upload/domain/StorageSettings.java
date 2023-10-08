@@ -9,12 +9,11 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @Entity
-@Table(name = "account_settings")
-public class AccountSettings {
+@Table(name = "storage_settings")
+public class StorageSettings {
 
 	@Id
 	private Long id;
-
+	private String accountId;
 	private Float quotaMax;
-	private String quotaUnit;
 }

@@ -7,6 +7,6 @@ public class FileMetadataDto {
 	private String accountId;
 	private String fileName;
 	private String fileHash;
-	private Double size;
+	private Float size;
 }
 
