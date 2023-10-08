@@ -1,13 +1,16 @@
 package com.file.upload.controller;
 
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.file.upload.service.FileService;
+import com.file.upload.domain.FileMetadata;
+import com.file.upload.dto.FileMetadataDto;
+import com.file.upload.service.FileUploadService;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -15,12 +18,12 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 @Slf4j
 public class FileUploadController {
-	private final FileService fileService;
+	private final FileUploadService fileService;
 
 	@PostMapping(path = "/upload")
-	public ResponseEntity<String> upload(@RequestParam("file") MultipartFile file, @RequestParam("fileMetadata") String fileMetadata) throws
-		Exception {
-		return new ResponseEntity<>(fileService.handleUpload(file, fileMetadata), HttpStatus.OK);
+	@ResponseStatus(code = HttpStatus.OK, reason = "OK")
+	public FileMetadataDto upload(@RequestParam("file") MultipartFile file, @RequestParam("fileMetadata") String fileMetadata) {
+		return fileService.handleUpload(file, fileMetadata);
 	}
 
 }

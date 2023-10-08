@@ -16,6 +16,8 @@ import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.model.PutObjectRequest;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.file.upload.domain.FileMetadata;
 import com.file.upload.dto.FileMetadataDto;
@@ -30,61 +32,68 @@ import lombok.extern.slf4j.Slf4j;
 @Service
 @Slf4j
 @RequiredArgsConstructor
-public class FileService {
+public class S3FileUploadServiceImpl implements FileUploadService {
 
-	public static final int CHECKSUM_VALIDATION_BUFFER_SIZE = 5 * 1024;
+	private static final int CHECKSUM_VALIDATION_BUFFER_SIZE = 5 * 1024;
+	private static final String BUCKET_PREFIX = "file-storage";
+
 	private final ObjectMapper objectMapper;
 	private final ModelMapper modelMapper;
-	private final S3Service s3Service;
 	private final FileMetadataRepository fileMetadataRepository;
 	private final StorageSettingsRepository storageSettingsRepository;
+	private final AmazonS3 s3Client;
 
-	public String handleUpload(MultipartFile multipartFile, String fileMetadata) {
+	@Override
+	public FileMetadataDto handleUpload(MultipartFile multipartFile, String fileMetadata) {
 		File file = new File(getTempFileName(multipartFile.getOriginalFilename()));
+		FileMetadata metadata = null;
 		try {
-			FileMetadataDto dto = objectMapper.readValue(fileMetadata, FileMetadataDto.class);
 			convertMultiPartFileToFile(multipartFile, file);
-			log.info("Dto: {}", dto);
-			validateFile(file, dto);
-			s3Service.uploadFile(file, dto);
-			fileMetadataRepository.save(modelMapper.map(dto, FileMetadata.class));
+			metadata = objectMapper.readValue(fileMetadata, FileMetadata.class);
+			validateFile(file, metadata);
+			uploadFile(file, metadata);
+			fileMetadataRepository.save(metadata);
 		} catch (Exception e) {
 			e.printStackTrace();
 		} finally {
 			file.delete();
 		}
-		return "Upload successfully";
+		return modelMapper.map(metadata, FileMetadataDto.class);
 	}
 
-	private void validateFile(File file, FileMetadataDto dto) throws
+	private void validateFile(File file, FileMetadata metadata) throws
 		FileUploadException,
 		IOException,
 		NoSuchAlgorithmException {
 
-		validateFileHash(file.getAbsolutePath(), dto.getFileHash());
-		dto.setSize(getFileSizeInKB(file.getAbsolutePath()));
+		validateFileHash(file.getAbsolutePath(), metadata.getFileHash());
+		metadata.setSize(getFileSizeInKB(file.getAbsolutePath()));
 
-		List<FileMetadata> fileMetadataList = fileMetadataRepository.findAllByAccountId(dto.getAccountId());
-		validateIfExceedQuota(fileMetadataList, dto);
-		validateIfFileExists(fileMetadataList, dto);
+		List<FileMetadata> fileMetadataList = fileMetadataRepository.findAllByAccountId(metadata.getAccountId());
+		validateIfExceedQuota(fileMetadataList, metadata);
+		validateIfFileExists(fileMetadataList, metadata);
 	}
 
-	private void validateIfExceedQuota(List<FileMetadata> fileMetadataList, FileMetadataDto dto) throws
+	public void uploadFile(File file, FileMetadata metadata) {
+		String bucketName = String.format("%s-%s", BUCKET_PREFIX, metadata.getAccountId());
+		s3Client.putObject(new PutObjectRequest(bucketName, metadata.getFileHash(), file));
+	}
+
+	private void validateIfExceedQuota(List<FileMetadata> fileMetadataList, FileMetadata metadata) throws
 		FileUploadException {
 		float currentUsage = (float)fileMetadataList.stream().mapToDouble(FileMetadata::getSize).sum();
-		float quota = storageSettingsRepository.findByAccountId(dto.getAccountId()).getQuotaMax();
+		float quota = storageSettingsRepository.findByAccountId(metadata.getAccountId()).getQuotaMax();
 		log.info("currentUsage : {}, quota: {}", currentUsage, quota);
-		float totalSize = currentUsage + dto.getSize();
+		float totalSize = currentUsage + metadata.getSize();
 		if (totalSize > quota) {
-
 			throw new FileUploadException("Exceed quota");
 		}
 	}
 
-	private void validateIfFileExists(List<FileMetadata> fileMetadataList, FileMetadataDto dto) throws
+	private void validateIfFileExists(List<FileMetadata> fileMetadataList, FileMetadata metadata) throws
 		FileUploadException {
 		boolean isFileExist = fileMetadataList.stream()
-			.anyMatch(metadata -> metadata.getFileHash().equals(dto.getFileHash()));
+			.anyMatch(fileMetadata -> fileMetadata.getFileHash().equals(metadata.getFileHash()));
 		if (isFileExist) {
 			throw new FileUploadException("File already exists");
 		}
