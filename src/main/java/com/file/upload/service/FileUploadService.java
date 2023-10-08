@@ -6,5 +6,5 @@ import com.file.upload.dto.FileMetadataDto;
 
 public interface FileUploadService {
 
-	FileMetadataDto handleUpload(MultipartFile multipartFile, String fileMetadata);
+	FileMetadataDto handleUpload(MultipartFile multipartFile, String fileMetadata) throws Exception;
 }

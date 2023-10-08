@@ -44,9 +44,9 @@ public class S3FileUploadServiceImpl implements FileUploadService {
 	private final AmazonS3 s3Client;
 
 	@Override
-	public FileMetadataDto handleUpload(MultipartFile multipartFile, String fileMetadata) {
+	public FileMetadataDto handleUpload(MultipartFile multipartFile, String fileMetadata) throws Exception {
 		File file = new File(getTempFileName(multipartFile.getOriginalFilename()));
-		FileMetadata metadata = null;
+		FileMetadata metadata;
 		try {
 			convertMultiPartFileToFile(multipartFile, file);
 			metadata = objectMapper.readValue(fileMetadata, FileMetadata.class);
@@ -54,7 +54,8 @@ public class S3FileUploadServiceImpl implements FileUploadService {
 			uploadFile(file, metadata);
 			fileMetadataRepository.save(metadata);
 		} catch (Exception e) {
-			e.printStackTrace();
+			log.error("Exception while uploading:", e);
+			throw e;
 		} finally {
 			file.delete();
 		}
